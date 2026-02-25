@@ -2,21 +2,105 @@ import json
 import random
 import textwrap
 import warnings
+from typing import Literal
 
-from RestaurantSimulator.simulator.chatbot import Chatbot, ExtractedAnswers
+from openai.types.chat import ChatCompletion
+
+from RestaurantSimulator.simulator.chatbot import StatefulChatbot, ExtractedAnswers
 import RestaurantSimulator.models as models
 
 from datetime import datetime
 from django.utils.timezone import make_aware
 
-def print_exchange(*, waiter_msg: str, customer_msg: str):
-    print(f"Waiter: {waiter_msg}")
-    print(f"Customer: {customer_msg}")
+
+# gpt-5-nano is somewhat cheaper per token, but for our use case we
+# observed is costs about 2x tokens per request (bizarre pricing)
+MODEL_DECODERS = 'gpt-4.1-nano'
+MODEL_WAITER = 'gpt-4o-mini'
+MODEL_CUSTOMER = 'gpt-4o-mini'
+
+def timestamp_to_django_datetime(unix_timestamp):
+    return make_aware(datetime.fromtimestamp(unix_timestamp))
+
+def create_message_from_openai_response(
+    *,
+    on: models.SimulatedChatThread,
+    role: Literal['WaiterBot', 'CustomerBot'],
+    temp: float,
+    msg: ChatCompletion,
+):
+    on.messages.create(
+        role=role,
+        content=msg.choices[0].message.content,
+        timestamp=timestamp_to_django_datetime(msg.created),
+        completion_tokens=msg.usage.completion_tokens,
+        prompt_tokens=msg.usage.prompt_tokens,
+        total_tokens=msg.usage.total_tokens,
+        model=msg.model,
+        temperature=temp,
+    )
+
+def generate_customer_bot_prompt() -> str:
+    hunger_levels = random.choice(
+        ["not hungry at all", "a little hungry", "somewhat hungry", "very hungry", "extremely hungry"]
+    )
+
+    mood = random.choice(
+        ["great", "good", "okay", "bad", "terrible"]
+    )
+
+    dietary_preferences = random.choice(["Omnivore", "Pescatarian", "Vegetarian", "Vegan"])
+    favorite_cuisines = random.choice(
+        ["Italian", "Chinese", "Mexican", "Indian", "American", "Mediterranean", "Japanese", "Thai"]
+    )
+
+    fan_of = random.choice([
+        '',
+        'You like to eat comfort food.',
+        'You like to eat underrated food.',
+        'You like to eat street food.',
+        'You like to eat gourmet food.',
+        'You like to eat your childhood favourite dishes.',
+    ])
+
+    avoid_foods = random.choice(
+        # Only apply this modifier in 1/2 of the cases
+        ['', f'When ask about food you like avoid naming '
+             f'any of the {random.choice([10, 15, 20])} most common foods in {favorite_cuisines} cuisine',]
+    )
+
+    return textwrap.dedent(f"""\
+        You are role-playing as a customer at a restaurant. You are in a {mood} mood and {hunger_levels}. 
+        You are {dietary_preferences} and your favorite cuisine is {favorite_cuisines}. {fan_of} {avoid_foods}
+        
+        Your task is to respond to the waiter's questions. Keep the answers concise but informative. Do not ask 
+        the waiter any questions, just respond to their questions. Your answer must align with the tastes profile of 
+        the persona you are role playing and their current mood and appetite.
+        
+        For example, if you are a vegetarian and like Italian, you might answer the waiter's 
+        questions like:
+        "I am a vegetarian and I love Italian food" 
+        or "My top 3 favorite foods are Margherita Pizza, Caprese Salad, and Eggplant Parmesan" 
+        or "Today, I would like to order the Margherita Pizza."
+        
+        Or for example, if you are a little hungry pescatarian who likes street food: 
+        "I would like to order Fish and Chips"
+        Or for example, if Omnivore who doesn't like any of the 10 ten most common omnivore dishes:
+        "My 3 favourite dishes are: Baked Duck, Larb khua mu and Bibimbap 
+    """)
+
+
+
+def print_exchange(*, waiter_msg: ChatCompletion, customer_msg: ChatCompletion):
+    print(f"Waiter: {waiter_msg.choices[0].message.content}")
+    print(f"Customer: {customer_msg.choices[0].message.content}")
     print("----")
 
-def extract_answers(customer_answer: str) -> ExtractedAnswers:
-    top3_processor = Chatbot(
-        model="gpt-4.1-nano",
+def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
+    customer_answer: str = customer_answer.choices[0].message.content
+
+    top3_processor = StatefulChatbot(
+        model=MODEL_DECODERS,
         system_prompt=textwrap.dedent("""\
             Your task is extract the top 3 favorite foods from users text. Return the answer as a JSON array of strings, 
             with each string being one of the top 3 favorite foods. Do not output anything other than the JSON array. 
@@ -27,17 +111,18 @@ def extract_answers(customer_answer: str) -> ExtractedAnswers:
         """)
     )
 
-    answer = top3_processor.send_user_message(customer_answer)
+    top3_dishes_msg = top3_processor.send_user_message(customer_answer)
+    top3_dishes = top3_dishes_msg.choices[0].message.content
     try:
-        top_3_foods_response = json.loads(answer)
+        top3_dishes = json.loads(top3_dishes)
     except json.JSONDecodeError:
-        top_3_foods_response = []
-        warnings.warn(f"Failed to decode top 3 foods response as JSON. Original response was: {answer} from {top3_processor}")
+        top3_dishes = []
+        warnings.warn(f"Failed to decode top 3 foods response as JSON. Original response was: {top3_dishes} from {top3_processor}")
 
-    print(f"Raw top 3 foods response: {top_3_foods_response}")
+    print(f"Raw top 3 foods response: {top3_dishes}")
 
-    dietary_preference_processor = Chatbot(
-        model="gpt-4.1-nano",
+    diet_processor = StatefulChatbot(
+        model=MODEL_DECODERS,
         system_prompt=textwrap.dedent("""\
             Your task is infer user dietary preference based on the food items they name. The possible dietary preferences are:
             "Omnivore", "Pescatarian", "Vegetarian", "Vegan". Return the answer as a single string that is one of these 4 options. 
@@ -49,23 +134,25 @@ def extract_answers(customer_answer: str) -> ExtractedAnswers:
         """)
     )
 
-    dietary_preference_response = dietary_preference_processor.send_user_message(customer_answer)
-    if dietary_preference_response not in ["Omnivore", "Pescatarian", "Vegetarian", "Vegan", "Unknown"]:
-        warnings.warn(f"Unexpected dietary preference response: {dietary_preference_response} from {dietary_preference_processor}")
-        dietary_preference_response = "Unknown"
+    diet_msg = diet_processor.send_user_message(customer_answer)
+    diet = diet_msg.choices[0].message.content
+    if diet not in ["Omnivore", "Pescatarian", "Vegetarian", "Vegan", "Unknown"]:
+        warnings.warn(f"Unexpected dietary preference response: {diet} from {diet}")
+        diet = "Unknown"
 
-    print(f"Raw dietary preference response: {dietary_preference_response}")
+    print(f"Raw dietary preference response: {diet}")
 
     return ExtractedAnswers(
-        top_3_favorite_foods=top_3_foods_response,
-        dietary_preference=dietary_preference_response
+        top3_dishes=top3_dishes,
+        top3_usage=ExtractedAnswers.usage_to_dict(top3_dishes_msg.usage),
+        top3_model=top3_dishes_msg.model,
+        diet=diet,
+        diet_usage=ExtractedAnswers.usage_to_dict(diet_msg.usage),
+        diet_model=top3_dishes_msg.model
     )
 
 
-
-
 def step4_waiter():
-    model = "gpt-4o-mini"
     waiter_prompt = textwrap.dedent("""\
         You are a friendly and professional restaurant waiter.
         Your role is to:
@@ -77,70 +164,54 @@ def step4_waiter():
         customer's response before proceeding to the next question.
     """)
 
-    dietary_preferences = ["Omnivore", "Pescatarian", "Vegetarian", "Vegan"]
-    favorite_cuisines = ["Italian", "Chinese", "Mexican", "Indian", "American", "Mediterranean", "Japanese", "Thai"]
+    waiter_temp = 1
+    customer_temp = random.choice([1, 1.1, 1.25, 1.3, 1.35, 1.4, 1.45])
+    customer_prompt = generate_customer_bot_prompt()
+    waiter_bot = StatefulChatbot(model=MODEL_WAITER, system_prompt=waiter_prompt, temperature=waiter_temp)
+    customer_bot = StatefulChatbot(model=MODEL_CUSTOMER, system_prompt=customer_prompt, temperature=customer_temp)
+    chat_thread_db = models.SimulatedChatThread(waiter_prompt=waiter_prompt, customer_prompt=customer_prompt)
 
-    mood = ["in a great mood", "in a good mood", "in an okay mood", "in a bad mood", "in a terrible mood"]
-    hunger_levels = ["not hungry at all", "a little hungry", "somewhat hungry", "very hungry", "extremely hungry"]
-    customer_prompt = textwrap.dedent(f"""\
-        You are role-playing as a customer at a restaurant. You are {random.choice(mood)} and {random.choice(hunger_levels)}.
-        Your dietary preference is {random.choice(dietary_preferences)} and your favorite cuisine is {random.choice(favorite_cuisines)}. 
-        Your task is to respond to the waiter's questions. Keep the answers concise but informative. Do not ask the waiter 
-        any questions, just respond to their questions. Your answer must align with your dietary preferences and favorite cuisine. 
-        
-        For example, if you are a vegetarian and your favorite cuisine is Italian, you might answer the waiter's questions like:
-        "I am a vegetarian and I love Italian food" 
-        or "My top 3 favorite foods are Margherita Pizza, Caprese Salad, and Eggplant Parmesan" 
-        or "Today, I would like to order the Margherita Pizza."
-    """)
-
-    waiter = Chatbot(model=model, system_prompt=waiter_prompt)
-    customer = Chatbot(model=model, system_prompt=customer_prompt)
-
-    chat_thread_db = models.SimulatedChatThread(
-        waiter_prompt=waiter_prompt,
-        customer_prompt=customer_prompt
-    )
+    # We need to safe here to have ID assign to our entity, so that we can reference it
+    # TODO: Wrap in transaction
     chat_thread_db.save()
 
-
-    waiter_welcomes_customer = waiter.send_message()
-    chat_thread_db.messages.create(
-        role="WaiterBot", content=waiter_welcomes_customer, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
+    # Step 1
+    waiter_welcomes_customer = waiter_bot.send_message()
+    create_message_from_openai_response(
+        on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_welcomes_customer,
     )
 
-    customer_reply = customer.send_user_message(waiter_welcomes_customer)
-    chat_thread_db.messages.create(
-        role="CustomerBot", content=customer_reply, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
-    )
+    customer_reply = customer_bot.send_user_message(waiter_welcomes_customer.choices[0].message.content)
+    create_message_from_openai_response(on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_reply)
 
     print_exchange(waiter_msg=waiter_welcomes_customer, customer_msg=customer_reply)
 
-
-    waiter_asks_favorites = waiter.send_user_message(customer_reply)
-    chat_thread_db.messages.create(
-        role="WaiterBot", content=waiter_asks_favorites, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
+    # Step 2
+    waiter_asks_favorites = waiter_bot.send_user_message(customer_reply.choices[0].message.content)
+    create_message_from_openai_response(
+        on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_asks_favorites
     )
 
-    customer_shares_favorites = customer.send_user_message(waiter_asks_favorites)
-    chat_thread_db.messages.create(
-        role="CustomerBot", content=customer_shares_favorites, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
+    customer_shares_favorites = customer_bot.send_user_message(waiter_asks_favorites.choices[0].message.content)
+    create_message_from_openai_response(
+        on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_shares_favorites
     )
-
-    extracted_answers = extract_answers(customer_shares_favorites)
-    chat_thread_db.extracted_answers = extracted_answers.model_dump()
 
     print_exchange(waiter_msg=waiter_asks_favorites, customer_msg=customer_shares_favorites)
 
+    # Step 2.1: Process answers
+    extracted_answers = extract_answers(customer_shares_favorites)
+    chat_thread_db.extracted_answers = extracted_answers.model_dump()
 
-    waiter_asks_order = waiter.send_user_message(customer_shares_favorites)
-    chat_thread_db.messages.create(
-        role="WaiterBot", content=waiter_asks_order, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
+    # Step 3
+    waiter_asks_order = waiter_bot.send_user_message(customer_shares_favorites.choices[0].message.content)
+    create_message_from_openai_response(
+        on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_asks_order
     )
 
-    customer_shares_order = customer.send_user_message(waiter_asks_order)
-    chat_thread_db.messages.create(
-        role="CustomerBot", content=customer_shares_order, timestamp=make_aware(datetime.fromtimestamp(waiter.latest_response["timestamp"]))
+    customer_shares_order = customer_bot.send_user_message(waiter_asks_order.choices[0].message.content)
+    create_message_from_openai_response(
+        on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_shares_order
     )
 
     print_exchange(waiter_msg=waiter_asks_order, customer_msg=customer_shares_order)

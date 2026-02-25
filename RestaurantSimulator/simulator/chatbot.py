@@ -1,52 +1,58 @@
 from environs import env
-from openai import OpenAI
+from openai import OpenAI, Omit
+from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion
 from pydantic import BaseModel
 
 env.read_env()
 client = OpenAI(api_key=env.str("OPENAI_KEY"))
 
-def response_to_message(response: ChatCompletion) -> dict:
-    return {
-        "role": response.choices[0].message.role,
-        "content": response.choices[0].message.content,
-        "timestamp": response.created
-    }
-
 
 class ExtractedAnswers(BaseModel):
-    dietary_preference: str
-    top_3_favorite_foods: list[str]
+    diet: str
+    diet_usage: dict
+    diet_model: str
 
-class Chatbot:
-    def __init__(self, *, model: str, system_prompt: str):
+    top3_dishes: list[str]
+    top3_usage: dict
+    top3_model: str
+
+
+    @staticmethod
+    def usage_to_dict(usage: CompletionUsage):
+        return {
+            "completion_tokens": usage.completion_tokens,
+            "prompt_tokens": usage.prompt_tokens,
+            "total_tokens": usage.total_tokens,
+        }
+
+
+class StatefulChatbot:
+    def __init__(self, *, model: str, system_prompt: str, temperature: float = Omit()):
         self.model = model
+        self.temperature = temperature
         self.system_message = {"role": "system", "content": system_prompt}
-        self.chat_history: list[dict] = []
+        self.chat_history: list = []
 
-    @property
-    def latest_response(self) -> dict:
-        if not self.chat_history:
-            raise ValueError("No chat history available.")
-
-        return self.chat_history[-1]
-
-    def send_user_message(self, prompt: str) -> str:
+    def send_user_message(self, prompt: str) -> ChatCompletion:
         user_message = {"role": "user", "content": prompt}
-        self.chat_history.append(user_message)
         return self.send_message(user_message)
 
-    def send_message(self, message:dict=None) -> str:
+    def send_message(self, message:dict=None) -> ChatCompletion:
         if message is not None:
             self.chat_history.append(message)
 
         response = client.chat.completions.create(
             model=self.model,
-            messages=[self.system_message] + self.chat_history,
+            temperature=self.temperature,
+            messages=[self.system_message] + self.chat_history, # This allows us to set system msg on existing thread
         )
 
-        self.chat_history.append(response_to_message(response))
-        return self.latest_response["content"]
+        self.chat_history.append({
+            "role": "assistant",
+            "content": response.choices[0].message.content
+        })
+        return response
 
 
     def __str__(self):
