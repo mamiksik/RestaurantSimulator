@@ -1,12 +1,18 @@
-version: "3.8"
+
+x-base: &base
+  build: .
+  volumes:
+    - .:/home/pn/app
+  environment:
+    - DEBUG=True
 
 services:
-  web:
-    build: .
+  tailwind-watcher:
+    <<: *base
+    command: bash -c "python manage.py tailwind install && python manage.py tailwind start"
+
+  django-dev-server:
+    <<: *base
     command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=1
