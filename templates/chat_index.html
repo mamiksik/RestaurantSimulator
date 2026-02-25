@@ -1,0 +1,210 @@
+{% load tailwind_tags %}
+{% load chat_ui_tags %}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    {% tailwind_css %}
+    <title> ElephantChat </title>
+</head>
+<body class="relative min-h-screen w-screen h-screen flex items-center justify-center p-4 bg-base-300">
+<div class="card shadow-sm bg-base-100 h-full w-full border border-base-300">
+    <div class="card-body p-0 flex flex-row max-h-full gap-0">
+        <div class="flex-none max-w-96 min-w36 max-h-full overflow-hidden">
+            <div class="text-base font-bold text-xs tracking-wide p-2 border-base-300 border-b">Chat History</div>
+            <ul class="list h-full overflow-y-scroll">
+                <!-- Preference filter form: uses GET so the selected preferences are visible in the query string -->
+                <form class="p-2" method="get" id="preferenceForm">
+                    <!-- Preserve the currently-open chat when changing filters -->
+                    <div class="flex gap-2 overflow-x-scroll">
+                        {% if chat_detail %}
+                            <input type="hidden" name="chat_id" value="{{ chat_detail.id }}"/>
+                        {% endif %}
+                        <input class="btn btn-xs" type="checkbox" name="preference" value="vegetarian"
+                               aria-label="🥦 Vegetarian"
+                               {% if 'vegetarian' in selected_preferences %}checked{% endif %}/>
+                        <input class="btn btn-xs" type="checkbox" name="preference" value="vegan" aria-label="🌱 Vegan"
+                               {% if 'vegan' in selected_preferences %}checked{% endif %}/>
+                        <input class="btn btn-xs" type="checkbox" name="preference" value="pescatarian"
+                               aria-label="🐟 Pescatarian"
+                               {% if 'pescatarian' in selected_preferences %}checked{% endif %}/>
+                        <input class="btn btn-xs" type="checkbox" name="preference" value="omnivore"
+                               aria-label="🍽️ Omnivore" {% if 'omnivore' in selected_preferences %}checked{% endif %}/>
+                    </div>
+                </form>
+                {% for chat in chats %}
+                    <li class="list-row flex p-0 {% if chat.id == detail_view.details.id %}bg-slate-50{% endif %} rounded-none">
+                        <a class="flex items-center p-4 gap-4 " href="?chat_id=
+                                {{ chat.id }}{% if selected_preferences %}{% for p in selected_preferences %}&preference={{ p }}{% endfor %}{% endif %}">
+                            <div class="text-3xl">
+                                {{ chat.extracted_answers.dietary_preference | dietary_preference_to_icon }}
+                            </div>
+
+                            <div class="list-col-grow">
+                                <div class="text-xs uppercase font-semibold opacity-60 mb-2">Favourites</div>
+                                <div class=" flex flex-row gap-2 flex-wrap">
+                                    {% for dish in chat.extracted_answers.top_3_favorite_foods %}
+                                        <div class="badge badge-sm badge-soft dish-badge hover:shadow-sm hover:cursor-pointer"
+                                             data-dish="{{ dish }}">{{ dish }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            {#                            <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">#}
+                            {#                                <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none"#}
+                            {#                                   stroke="currentColor">#}
+                            {#                                    <path d="M6 3L20 12 6 21 6 3z"></path>#}
+                            {#                                </g>#}
+                            {#                            </svg>#}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="flex flex-col flex-1 border-base-300 border-l">
+            <div class="text-base font-bold text-xs tracking-wide p-2 border-base-300 border-b">Conversation Detail
+            </div>
+            {% if detail_view is None %}
+                <div class="flex flex-1 justify-items-center justify-center items-center font-bold text-center">No
+                    conversation selected
+                </div>
+            {% else %}
+                <div class="bg-slate-50 col-span-full ">
+                    <div class="card-body">
+                        <div class="mt-3 flex items-center gap-4">
+                            <div class="text-4xl">
+                                {{ detail_view.details.extracted_answers.dietary_preference | dietary_preference_to_icon }}
+                            </div>
+                            <div>
+                                <div class="text-xs opacity-60">Dietary preference</div>
+                                <div class="font-semibold">{{ detail_view.details.extracted_answers.dietary_preference|default:"Unknown"|capfirst }}</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="text-xs opacity-60">Top 3 favorite dishes</div>
+                            <div class="flex flex-row gap-2 mt-2 flex-wrap">
+                                {% for dish in detail_view.details.extracted_answers.top_3_favorite_foods %}
+                                    <div class="badge badge-sm badge-soft badge-neutral dish-badge hover:shadow-sm hover:cursor-pointer"
+                                         data-dish="{{ dish }}">{{ dish }}</div>
+                                {% empty %}
+                                    <div class="text-xs opacity-50">No favorite dishes recorded</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-row overflow-hidden">
+                    <div class="flex-1 flex flex-col">
+                        <div class="text-base font-bold text-xs tracking-wide p-2 border-base-300 border-b border-t">
+                            Transcript
+                        </div>
+                        <div class="max-h-full h-full overflow-scroll px-2">
+                            {% for message in detail_view.messages %}
+                                <div class="chat mb-4 {{ forloop.counter0 | divisibleby:2 | yesno:'chat-start,chat-end' }}">
+                                    <div class="chat-header">
+                                        {{ message.role }}
+                                        <time class="text-xs opacity-50">{{ message.timestamp }}</time>
+                                    </div>
+                                    <div class="chat-bubble bg-slate-50 transition-colors {{ forloop.counter0 | divisibleby:2 | yesno:'waiter-bubble,customer-bubble' }}">
+                                        {# Since we are injecting HTML attributes in the controller we have to disable escaping #}
+                                        {# For our simple use case, where we control the prompts it's fine, but this is not generally safe #}
+                                        {# solution: inject the attributes on client side after escaping has be done #}
+                                        {% autoescape off %}
+                                            {{ message.content | safe }}
+                                        {% endautoescape %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <div class="text-base font-bold text-xs tracking-wide p-2 border-base-300 border-b border-t">
+                            Bots
+                        </div>
+                        <div class="card border border-base-200 text-base-content bg-slate-50 mx-2"
+                             id="customer-prompt">
+                            <div class="flex items-start justify-between p-2 gap-2 border-b border-base-200">
+                                <div>
+                                    <div class="text-base font-bold text-xs tracking-wide mb-1">Customer Bot Prompt
+                                    </div>
+                                    <div class="text-xs opacity-60">System instruction shown to waiter bot</div>
+                                </div>
+                            </div>
+
+                            <div class="p-3">
+                                <pre class="whitespace-pre-wrap break-words text-sm rounded-md bg-white p-3 border border-base-200 max-h-40 overflow-auto">
+                            {{ detail_view.details.customer_prompt }}
+                                </pre>
+                            </div>
+                        </div>
+
+                        <div class="card border border-base-200 text-base-content bg-slate-50 mx-2" id="waiter-prompt">
+                            <div class="flex items-start justify-between p-2 gap-2 border-b border-base-200">
+                                <div>
+                                    <div class="text-base font-bold text-xs tracking-wide mb-1">Waiter Bot Prompt</div>
+                                    <div class="text-xs opacity-60">System instruction shown to waiter bot</div>
+                                </div>
+                            </div>
+
+                            <div class="p-3">
+                                <pre class="whitespace-pre-wrap break-words text-sm rounded-md bg-white p-3 border border-base-200 max-h-40 overflow-auto">
+                            {{ detail_view.details.waiter_prompt }}
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# HACK: Tailwind can't detect class names in yesno tag => class is not included in css#}
+<div class="hidden chat-end chat-start"></div>
+
+<script>
+    // Auto-submit the preference form when a checkbox is changed so the list updates immediately.
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('preferenceForm');
+        if (!form) return;
+        form.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => form.submit()));
+
+        const toggleClass = (on, status) => {
+            document.querySelectorAll(on).forEach(el => {
+                el.classList.toggle('bg-slate-200', status);
+            });
+        };
+
+        const waiterNode = document.getElementById("waiter-prompt")
+        waiterNode?.addEventListener('mouseenter', () => toggleClass('.waiter-bubble', true));
+        waiterNode?.addEventListener('mouseleave', () => toggleClass('.waiter-bubble', false));
+
+        const customerNode = document.getElementById("customer-prompt")
+        customerNode?.addEventListener('mouseenter', () => toggleClass('.customer-bubble', true));
+        customerNode?.addEventListener('mouseleave', () => toggleClass('.customer-bubble', false));
+
+        const toggleMarkerClass = (status, e) => {
+            const dish = e.target.dataset.dish
+            const markers = document.querySelector(`.dish-marker[data-dish='${dish}']`)
+            for (const cls of ['bg-gradient-to-br', 'from-amber-600', 'to-pink-600', 'bg-clip-text', 'text-transparent']) {
+                markers.classList.toggle(cls, status)
+            }
+        }
+
+        const dishBadges = document.querySelectorAll(".dish-badge")
+        dishBadges.forEach(elem => {
+            elem.addEventListener("mouseenter", (e) => toggleMarkerClass(true, e))
+            elem.addEventListener("mouseleave", (e) => toggleMarkerClass(false, e))
+        })
+
+    });
+
+
+</script>
+
+</body>
+</html>
