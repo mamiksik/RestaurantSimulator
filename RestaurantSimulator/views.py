@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from . import models
-from .queries import get_total_tokens_used, get_model_name, get_model_temperature
+from .queries import get_total_tokens_used, get_model_name, get_model_temperature, get_diet_distribution, \
+    get_all_favorite_foods
 
 
 def index(request):
@@ -40,6 +41,11 @@ def index(request):
 
     return render(request, 'chat_index.html', {
         'chats': chats_qs,
+        'chat_stats': {
+            'diet_dist': get_diet_distribution(),
+            'dishes_dist': get_all_favorite_foods(),
+            'count': chats_qs.count()
+        },
         'detail_view': details_view,
         'selected_preferences': selected_prefs,
     })

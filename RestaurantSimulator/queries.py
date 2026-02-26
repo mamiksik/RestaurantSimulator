@@ -1,4 +1,6 @@
-from django.db.models import Sum
+from django.db import connection
+from django.db.models import Sum, Count
+from django.db.models.functions import Lower
 
 import RestaurantSimulator.models as models
 
@@ -24,3 +26,32 @@ def get_total_tokens_used(thread: models.SimulatedChatThread, for_role: models.R
         .get('total_tokens__sum')
     )
 
+def get_diet_distribution() -> dict:
+    qs = (
+        models.SimulatedChatThread.objects
+        .values(diet=Lower('extracted_answers__diet'))
+        .annotate(count=Count('id'))
+    )
+    print(qs)
+    return {
+        row['diet'] if row['diet'] is not None else 'Unknown': row['count'] for row in qs
+    }
+
+def get_all_favorite_foods() -> dict:
+    vendor = connection.vendor
+    if vendor != "sqlite":
+        raise Exception("Only sqlite database is supported for now")
+
+    sql = """
+          SELECT lower(trim(json_each.value)) AS food, count(*) AS count
+          FROM RestaurantSimulator_simulatedchatthread,
+              json_each(RestaurantSimulator_simulatedchatthread.extracted_answers, '$.top3_dishes')
+          WHERE RestaurantSimulator_simulatedchatthread.extracted_answers IS NOT NULL
+          GROUP BY food
+          ORDER BY count DESC
+      """
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+
+    return {row[0]: row[1] for row in rows}
