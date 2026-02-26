@@ -36,7 +36,7 @@ def index(request):
                     'waiter_model': get_model_name(chat_thread, models.RoleType.WaiterBot),
                     'waiter_temperature': get_model_temperature(chat_thread, models.RoleType.WaiterBot),
                     'customer_model': get_model_name(chat_thread, models.RoleType.CustomerBot),
-                    'customer_temperature': get_model_temperature(chat_thread, models.RoleType.WaiterBot),
+                    'customer_temperature': get_model_temperature(chat_thread, models.RoleType.CustomerBot),
                     'customer_tokens_used': customer_tokens_used,
                 }
 
