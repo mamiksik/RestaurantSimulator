@@ -203,7 +203,8 @@ def step4_waiter():
     )
 
     # We need to safe here to have ID assign to our entity, so that we can reference it
-    # TODO: Wrap in transaction
+    # In production app would wrap this in a transaction to prevent having partial records
+    # in case the subsequent codes fails
     chat_thread_db.save()
 
     # Step 1
