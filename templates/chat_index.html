@@ -252,7 +252,7 @@
         const toggleMarkerClass = (status, e) => {
             const dish = e.target.dataset.dish
             const markers = document.querySelector(`.dish-marker[data-dish='${dish}']`)
-            for (const cls of ['bg-gradient-to-br', 'from-amber-600', 'to-pink-600', 'bg-clip-text', 'text-transparent']) {
+            for (const cls of ['bg-gradient-to-br', 'from-amber-600', 'to-pink-600', 'bg-clip-text', 'text-transparent', 'font-semibold']) {
                 markers.classList.toggle(cls, status)
             }
         }
