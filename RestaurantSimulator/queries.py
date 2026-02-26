@@ -45,7 +45,9 @@ def get_diet_distribution() -> dict:
     }
 
 
-def get_all_favorite_foods(on: QuerySet[models.SimulatedChatThread, models.SimulatedChatThread]) -> dict:
+def get_all_favorite_foods(
+    on: QuerySet[models.SimulatedChatThread, models.SimulatedChatThread],
+) -> dict:
     vendor = connection.vendor
     if vendor != "sqlite":
         raise Exception("Only sqlite database is supported for now")

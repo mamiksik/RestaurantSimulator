@@ -19,13 +19,12 @@ def index(request):
     """Index page view for ElephantChat"""
 
     # On first load set the filters to vegetarian/vegan
-    if request.GET.get("first_load_flag", 'false') != "true":
+    if request.GET.get("first_load_flag", "false") != "true":
         query_params = request.GET.copy()
-        query_params['preference'] = ["vegetarian", "vegan"]
-        query_params['first_load_flag'] = 'true'
+        query_params["preference"] = ["vegetarian", "vegan"]
+        query_params["first_load_flag"] = "true"
         query_string = urlencode(query_params, doseq=True)
         return redirect(f"{request.path}?{query_string}")
-
 
     chats_qs = models.SimulatedChatThread.objects.all().order_by("-id")
     # If the user selected one or more preferences, filter the queryset by the JSON field
@@ -37,8 +36,6 @@ def index(request):
     details_view = None
     if chat_id := request.GET.get("chat_id"):
         if chat_thread := models.SimulatedChatThread.objects.filter(id=chat_id).first():
-
-
             # Unnecessary check now that all fields are populated
             if top3_dishes := chat_thread.extracted_answers.get("top3_dishes"):
                 messages = chat_thread.messages.all().order_by("timestamp")
@@ -49,7 +46,9 @@ def index(request):
 
                 for message in messages:
                     message.content = dish_pattern.sub(
-                        lambda match: (f"<b class='dish-marker' data-dish='{match.group(0)}'>{match.group(0)}</b>"),
+                        lambda match: (
+                            f"<b class='dish-marker' data-dish='{match.group(0)}'>{match.group(0)}</b>"
+                        ),
                         message.content,
                     )
 
@@ -79,10 +78,7 @@ def index(request):
     # Prepare stats and a JSON representation of dish counts for the client-side word cloud
     # Only include foods that are mentioned at least twice to make the cloud easier to read
     dishes_dist = get_all_favorite_foods(chats_qs)
-    dishes_dist = {
-        k: v for k, v in dishes_dist.items() if v > 1
-    }
-
+    dishes_dist = {k: v for k, v in dishes_dist.items() if v > 1}
 
     return render(
         request,
