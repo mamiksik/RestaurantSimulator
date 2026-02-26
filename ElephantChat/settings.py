@@ -33,6 +33,8 @@ ALLOWED_HOSTS = env.list(
     "WEBSITE_HOSTNAME", []
 )  # WEBSITE_HOSTNAME is auto set in azure web service
 
+# This is good enough default for now
+CSRF_TRUSTED_ORIGINS = ['https://restaurantsim.azurewebsites.net'] + ALLOWED_HOSTS
 
 # Application definition
 TAILWIND_APP_NAME = "theme"
