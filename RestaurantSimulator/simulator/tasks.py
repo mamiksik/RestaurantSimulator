@@ -165,7 +165,7 @@ def step4_waiter():
     """)
 
     waiter_temp = 1
-    customer_temp = random.choice([1, 1.1, 1.25, 1.3, 1.35, 1.4, 1.45])
+    customer_temp = random.choice([1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4])
     customer_prompt = generate_customer_bot_prompt()
     waiter_bot = StatefulChatbot(model=MODEL_WAITER, system_prompt=waiter_prompt, temperature=waiter_temp)
     customer_bot = StatefulChatbot(model=MODEL_CUSTOMER, system_prompt=customer_prompt, temperature=customer_temp)
