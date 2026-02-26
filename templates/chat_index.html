@@ -197,6 +197,7 @@
         const toggleClass = (on, status) => {
             document.querySelectorAll(on).forEach(el => {
                 el.classList.toggle('bg-base-300', status);
+                el.classList.toggle('shadow-xs', status);
             });
         };
 
