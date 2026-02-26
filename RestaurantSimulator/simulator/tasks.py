@@ -109,12 +109,6 @@ def generate_customer_bot_prompt() -> str:
     """)
 
 
-def print_exchange(*, waiter_msg: ChatCompletion, customer_msg: ChatCompletion):
-    print(f"Waiter: {waiter_msg.choices[0].message.content}")
-    print(f"Customer: {customer_msg.choices[0].message.content}")
-    print("----")
-
-
 def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
     customer_answer: str = customer_answer.choices[0].message.content
 
@@ -171,6 +165,12 @@ def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
         diet_usage=ExtractedAnswers.usage_to_dict(diet_msg.usage),
         diet_model=top3_dishes_msg.model,
     )
+
+
+def print_exchange(*, waiter_msg: ChatCompletion, customer_msg: ChatCompletion):
+    print(f"Waiter: {waiter_msg.choices[0].message.content}")
+    print(f"Customer: {customer_msg.choices[0].message.content}")
+    print("----")
 
 
 def step4_waiter():
