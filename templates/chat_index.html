@@ -259,7 +259,7 @@
 
     });
 
-    function closeDetailView() {
+    const closeDetailView = () => {
         // We don't use a+href to retain filter params
         const url = new URL(window.location.href);
         url.searchParams.delete('chat_id');
