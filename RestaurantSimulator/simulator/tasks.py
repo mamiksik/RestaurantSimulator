@@ -267,8 +267,3 @@ def step4_waiter():
 
     print_exchange(waiter_msg=waiter_asks_order, customer_msg=customer_shares_order)
     chat_thread_db.save()
-
-
-if __name__ == "__main__":
-    # step3_waiter()
-    step4_waiter()
