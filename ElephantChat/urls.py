@@ -18,13 +18,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from django.contrib import admin
-from django.urls import path
-from . import views
-import RestaurantSimulator.views as restaurant_views
+from django.urls import path, include
+import RestaurantSimulator.views as simulator_views
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.index, name='index'),
-    path('restaurant-simulator/', restaurant_views.index, name='restaurant_simulator_index'),
+    path('', simulator_views.index, name='restaurant_simulator_index'),
+    path('accounts/', include('django.contrib.auth.urls')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

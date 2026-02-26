@@ -21,7 +21,7 @@
   * the scope of this path.
   */
 html {
-    @apply bg-base-100 text-base-content;
+    @apply bg-slate-50 dark:bg-slate-800 text-base-content;
 }
 
 @source "../../../**/*.{html,py,js}";

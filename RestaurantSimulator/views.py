@@ -1,9 +1,10 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from . import models
 from .queries import get_total_tokens_used, get_model_name, get_model_temperature, get_diet_distribution, \
     get_all_favorite_foods
 
-
+@login_required
 def index(request):
     """ Index page view for ElephantChat """
 
