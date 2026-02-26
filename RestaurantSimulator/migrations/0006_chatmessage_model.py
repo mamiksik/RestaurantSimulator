@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0005_chatmessage_completion_tokens_and_more'),
+        ("RestaurantSimulator", "0005_chatmessage_completion_tokens_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='chatmessage',
-            name='model',
+            model_name="chatmessage",
+            name="model",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
     ]

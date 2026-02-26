@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0003_alter_chatmessage_role'),
+        ("RestaurantSimulator", "0003_alter_chatmessage_role"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='simulatedchatthread',
-            name='extracted_answers',
+            model_name="simulatedchatthread",
+            name="extracted_answers",
             field=models.JSONField(blank=True, null=True),
         ),
     ]

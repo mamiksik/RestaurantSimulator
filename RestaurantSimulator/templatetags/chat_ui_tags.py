@@ -12,5 +12,3 @@ def diet_to_icon(value):
         "pescatarian": "🐟",
         "omnivore": "🍽️",
     }.get(normalized_value, "❓")
-
-

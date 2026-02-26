@@ -1,5 +1,4 @@
 from django.core.management import BaseCommand
-import RestaurantSimulator.models as models
 from RestaurantSimulator.simulator.tasks import step4_waiter
 
 

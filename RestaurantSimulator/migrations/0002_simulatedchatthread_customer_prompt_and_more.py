@@ -4,22 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0001_initial'),
+        ("RestaurantSimulator", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='simulatedchatthread',
-            name='customer_prompt',
-            field=models.TextField(default=''),
+            model_name="simulatedchatthread",
+            name="customer_prompt",
+            field=models.TextField(default=""),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='simulatedchatthread',
-            name='waiter_prompt',
-            field=models.TextField(default=''),
+            model_name="simulatedchatthread",
+            name="waiter_prompt",
+            field=models.TextField(default=""),
             preserve_default=False,
         ),
     ]

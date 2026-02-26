@@ -4,25 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0004_simulatedchatthread_extracted_answers'),
+        ("RestaurantSimulator", "0004_simulatedchatthread_extracted_answers"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='chatmessage',
-            name='completion_tokens',
+            model_name="chatmessage",
+            name="completion_tokens",
             field=models.IntegerField(default=-1),
         ),
         migrations.AddField(
-            model_name='chatmessage',
-            name='prompt_tokens',
+            model_name="chatmessage",
+            name="prompt_tokens",
             field=models.IntegerField(default=-1),
         ),
         migrations.AddField(
-            model_name='chatmessage',
-            name='total_tokens',
+            model_name="chatmessage",
+            name="total_tokens",
             field=models.IntegerField(default=-1),
         ),
     ]

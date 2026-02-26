@@ -15,17 +15,19 @@ from django.utils.timezone import make_aware
 
 # gpt-5-nano is somewhat cheaper per token, but for our use case we
 # observed is costs about 2x tokens per request (bizarre pricing)
-MODEL_DECODERS = 'gpt-4.1-nano'
-MODEL_WAITER = 'gpt-4o-mini'
-MODEL_CUSTOMER = 'gpt-4o-mini'
+MODEL_DECODERS = "gpt-4.1-nano"
+MODEL_WAITER = "gpt-4o-mini"
+MODEL_CUSTOMER = "gpt-4o-mini"
+
 
 def timestamp_to_django_datetime(unix_timestamp):
     return make_aware(datetime.fromtimestamp(unix_timestamp))
 
+
 def create_message_from_openai_response(
     *,
     on: models.SimulatedChatThread,
-    role: Literal['WaiterBot', 'CustomerBot'],
+    role: Literal["WaiterBot", "CustomerBot"],
     temp: float,
     msg: ChatCompletion,
 ):
@@ -40,33 +42,54 @@ def create_message_from_openai_response(
         temperature=temp,
     )
 
+
 def generate_customer_bot_prompt() -> str:
     hunger_levels = random.choice(
-        ["not hungry at all", "a little hungry", "somewhat hungry", "very hungry", "extremely hungry"]
+        [
+            "not hungry at all",
+            "a little hungry",
+            "somewhat hungry",
+            "very hungry",
+            "extremely hungry",
+        ]
     )
 
-    mood = random.choice(
-        ["great", "good", "okay", "bad", "terrible"]
-    )
+    mood = random.choice(["great", "good", "okay", "bad", "terrible"])
 
-    dietary_preferences = random.choice(["Omnivore", "Pescatarian", "Vegetarian", "Vegan"])
+    dietary_preferences = random.choice(
+        ["Omnivore", "Pescatarian", "Vegetarian", "Vegan"]
+    )
     favorite_cuisines = random.choice(
-        ["Italian", "Chinese", "Mexican", "Indian", "American", "Mediterranean", "Japanese", "Thai"]
+        [
+            "Italian",
+            "Chinese",
+            "Mexican",
+            "Indian",
+            "American",
+            "Mediterranean",
+            "Japanese",
+            "Thai",
+        ]
     )
 
-    fan_of = random.choice([
-        '',
-        'You like to eat comfort food.',
-        'You like to eat underrated food.',
-        'You like to eat street food.',
-        'You like to eat gourmet food.',
-        'You like to eat your childhood favourite dishes.',
-    ])
+    fan_of = random.choice(
+        [
+            "",
+            "You like to eat comfort food.",
+            "You like to eat underrated food.",
+            "You like to eat street food.",
+            "You like to eat gourmet food.",
+            "You like to eat your childhood favourite dishes.",
+        ]
+    )
 
     avoid_foods = random.choice(
         # Only apply this modifier in 1/2 of the cases
-        ['', f'When ask about food you like avoid naming '
-             f'any of the {random.choice([10, 15, 20])} most common foods in {favorite_cuisines} cuisine',]
+        [
+            "",
+            f"When ask about food you like avoid naming "
+            f"any of the {random.choice([10, 15, 20])} most common foods in {favorite_cuisines} cuisine",
+        ]
     )
 
     return textwrap.dedent(f"""\
@@ -90,11 +113,11 @@ def generate_customer_bot_prompt() -> str:
     """)
 
 
-
 def print_exchange(*, waiter_msg: ChatCompletion, customer_msg: ChatCompletion):
     print(f"Waiter: {waiter_msg.choices[0].message.content}")
     print(f"Customer: {customer_msg.choices[0].message.content}")
     print("----")
+
 
 def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
     customer_answer: str = customer_answer.choices[0].message.content
@@ -108,7 +131,7 @@ def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
             
             For example, if the user says "I love pizza and pasta", you might return ["pizza", "pasta"]. 
             If the user says "I really like sushi", you might return ["sushi"].
-        """)
+        """),
     )
 
     top3_dishes_msg = top3_processor.send_user_message(customer_answer)
@@ -117,7 +140,9 @@ def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
         top3_dishes = json.loads(top3_dishes)
     except json.JSONDecodeError:
         top3_dishes = []
-        warnings.warn(f"Failed to decode top 3 foods response as JSON. Original response was: {top3_dishes} from {top3_processor}")
+        warnings.warn(
+            f"Failed to decode top 3 foods response as JSON. Original response was: {top3_dishes} from {top3_processor}"
+        )
 
     print(f"Raw top 3 foods response: {top3_dishes}")
 
@@ -131,7 +156,7 @@ def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
             For example, if the user says "I would like to order Pizza Margarita", you might return "Vegetarian". 
             If the user says "I will order fish and chips", you might return "Pescatarian". 
             If the user says "I want to order steak", you might return "Omnivore".
-        """)
+        """),
     )
 
     diet_msg = diet_processor.send_user_message(customer_answer)
@@ -148,7 +173,7 @@ def extract_answers(customer_answer: ChatCompletion) -> ExtractedAnswers:
         top3_model=top3_dishes_msg.model,
         diet=diet,
         diet_usage=ExtractedAnswers.usage_to_dict(diet_msg.usage),
-        diet_model=top3_dishes_msg.model
+        diet_model=top3_dishes_msg.model,
     )
 
 
@@ -167,9 +192,15 @@ def step4_waiter():
     waiter_temp = 1
     customer_temp = random.choice([1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4])
     customer_prompt = generate_customer_bot_prompt()
-    waiter_bot = StatefulChatbot(model=MODEL_WAITER, system_prompt=waiter_prompt, temperature=waiter_temp)
-    customer_bot = StatefulChatbot(model=MODEL_CUSTOMER, system_prompt=customer_prompt, temperature=customer_temp)
-    chat_thread_db = models.SimulatedChatThread(waiter_prompt=waiter_prompt, customer_prompt=customer_prompt)
+    waiter_bot = StatefulChatbot(
+        model=MODEL_WAITER, system_prompt=waiter_prompt, temperature=waiter_temp
+    )
+    customer_bot = StatefulChatbot(
+        model=MODEL_CUSTOMER, system_prompt=customer_prompt, temperature=customer_temp
+    )
+    chat_thread_db = models.SimulatedChatThread(
+        waiter_prompt=waiter_prompt, customer_prompt=customer_prompt
+    )
 
     # We need to safe here to have ID assign to our entity, so that we can reference it
     # TODO: Wrap in transaction
@@ -178,44 +209,68 @@ def step4_waiter():
     # Step 1
     waiter_welcomes_customer = waiter_bot.send_message()
     create_message_from_openai_response(
-        on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_welcomes_customer,
+        on=chat_thread_db,
+        role="WaiterBot",
+        temp=waiter_temp,
+        msg=waiter_welcomes_customer,
     )
 
-    customer_reply = customer_bot.send_user_message(waiter_welcomes_customer.choices[0].message.content)
-    create_message_from_openai_response(on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_reply)
+    customer_reply = customer_bot.send_user_message(
+        waiter_welcomes_customer.choices[0].message.content
+    )
+    create_message_from_openai_response(
+        on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_reply
+    )
 
     print_exchange(waiter_msg=waiter_welcomes_customer, customer_msg=customer_reply)
 
     # Step 2
-    waiter_asks_favorites = waiter_bot.send_user_message(customer_reply.choices[0].message.content)
+    waiter_asks_favorites = waiter_bot.send_user_message(
+        customer_reply.choices[0].message.content
+    )
     create_message_from_openai_response(
         on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_asks_favorites
     )
 
-    customer_shares_favorites = customer_bot.send_user_message(waiter_asks_favorites.choices[0].message.content)
+    customer_shares_favorites = customer_bot.send_user_message(
+        waiter_asks_favorites.choices[0].message.content
+    )
     create_message_from_openai_response(
-        on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_shares_favorites
+        on=chat_thread_db,
+        role="CustomerBot",
+        temp=customer_temp,
+        msg=customer_shares_favorites,
     )
 
-    print_exchange(waiter_msg=waiter_asks_favorites, customer_msg=customer_shares_favorites)
+    print_exchange(
+        waiter_msg=waiter_asks_favorites, customer_msg=customer_shares_favorites
+    )
 
     # Step 2.1: Process answers
     extracted_answers = extract_answers(customer_shares_favorites)
     chat_thread_db.extracted_answers = extracted_answers.model_dump()
 
     # Step 3
-    waiter_asks_order = waiter_bot.send_user_message(customer_shares_favorites.choices[0].message.content)
+    waiter_asks_order = waiter_bot.send_user_message(
+        customer_shares_favorites.choices[0].message.content
+    )
     create_message_from_openai_response(
         on=chat_thread_db, role="WaiterBot", temp=waiter_temp, msg=waiter_asks_order
     )
 
-    customer_shares_order = customer_bot.send_user_message(waiter_asks_order.choices[0].message.content)
+    customer_shares_order = customer_bot.send_user_message(
+        waiter_asks_order.choices[0].message.content
+    )
     create_message_from_openai_response(
-        on=chat_thread_db, role="CustomerBot", temp=customer_temp, msg=customer_shares_order
+        on=chat_thread_db,
+        role="CustomerBot",
+        temp=customer_temp,
+        msg=customer_shares_order,
     )
 
     print_exchange(waiter_msg=waiter_asks_order, customer_msg=customer_shares_order)
     chat_thread_db.save()
+
 
 if __name__ == "__main__":
     # step3_waiter()

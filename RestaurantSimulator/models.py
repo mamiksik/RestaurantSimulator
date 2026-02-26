@@ -1,11 +1,15 @@
 from django.db import models
 
+
 class RoleType(models.TextChoices):
-    CustomerBot = 'CustomerBot'
-    WaiterBot = 'WaiterBot'
+    CustomerBot = "CustomerBot"
+    WaiterBot = "WaiterBot"
+
 
 class ChatMessage(models.Model):
-    thread = models.ForeignKey("SimulatedChatThread", on_delete=models.CASCADE, related_name="messages")
+    thread = models.ForeignKey(
+        "SimulatedChatThread", on_delete=models.CASCADE, related_name="messages"
+    )
 
     role = models.CharField(max_length=255, choices=RoleType.choices)
     """The role of the message sender, either 'CustomerBot' or 'WaiterBot'."""

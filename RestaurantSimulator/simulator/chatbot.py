@@ -17,7 +17,6 @@ class ExtractedAnswers(BaseModel):
     top3_usage: dict
     top3_model: str
 
-
     @staticmethod
     def usage_to_dict(usage: CompletionUsage):
         return {
@@ -38,24 +37,21 @@ class StatefulChatbot:
         user_message = {"role": "user", "content": prompt}
         return self.send_message(user_message)
 
-    def send_message(self, message:dict=None) -> ChatCompletion:
+    def send_message(self, message: dict = None) -> ChatCompletion:
         if message is not None:
             self.chat_history.append(message)
 
         response = client.chat.completions.create(
             model=self.model,
             temperature=self.temperature,
-            messages=[self.system_message] + self.chat_history, # This allows us to set system msg on existing thread
+            messages=[self.system_message]
+            + self.chat_history,  # This allows us to set system msg on existing thread
         )
 
-        self.chat_history.append({
-            "role": "assistant",
-            "content": response.choices[0].message.content
-        })
+        self.chat_history.append(
+            {"role": "assistant", "content": response.choices[0].message.content}
+        )
         return response
-
 
     def __str__(self):
         return f"Chatbot(model={self.model}, system_prompt={self.system_message['content'][:50]}..., chat_history_length={len(self.chat_history)})"
-
-

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0006_chatmessage_model'),
+        ("RestaurantSimulator", "0006_chatmessage_model"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='chatmessage',
-            name='temperature',
+            model_name="chatmessage",
+            name="temperature",
             field=models.FloatField(blank=True, null=True),
         ),
     ]

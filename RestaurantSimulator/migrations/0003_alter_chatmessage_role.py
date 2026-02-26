@@ -4,15 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('RestaurantSimulator', '0002_simulatedchatthread_customer_prompt_and_more'),
+        ("RestaurantSimulator", "0002_simulatedchatthread_customer_prompt_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='chatmessage',
-            name='role',
-            field=models.CharField(choices=[('CustomerBot', 'Customerbot'), ('WaiterBot', 'Waiterbot')], max_length=255),
+            model_name="chatmessage",
+            name="role",
+            field=models.CharField(
+                choices=[("CustomerBot", "Customerbot"), ("WaiterBot", "Waiterbot")],
+                max_length=255,
+            ),
         ),
     ]

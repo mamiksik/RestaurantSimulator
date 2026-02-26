@@ -10,3 +10,8 @@ dependencies = [
     "openai>=2.21.0",
     "whitenoise>=6.11.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2",
+]
