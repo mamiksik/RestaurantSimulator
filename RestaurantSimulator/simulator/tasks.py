@@ -20,10 +20,6 @@ MODEL_WAITER = "gpt-4o-mini"
 MODEL_CUSTOMER = "gpt-4o-mini"
 
 
-def timestamp_to_django_datetime(unix_timestamp):
-    return make_aware(datetime.fromtimestamp(unix_timestamp))
-
-
 def create_message_from_openai_response(
     *,
     on: models.SimulatedChatThread,
@@ -34,7 +30,7 @@ def create_message_from_openai_response(
     on.messages.create(
         role=role,
         content=msg.choices[0].message.content,
-        timestamp=timestamp_to_django_datetime(msg.created),
+        timestamp=make_aware(datetime.fromtimestamp(msg.created)),
         completion_tokens=msg.usage.completion_tokens,
         prompt_tokens=msg.usage.prompt_tokens,
         total_tokens=msg.usage.total_tokens,
