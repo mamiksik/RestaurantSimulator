@@ -32,10 +32,13 @@ def index(request):
                 chat_thread, models.RoleType.CustomerBot
             )
 
+            # Unnecessary check now that all fields are populated
             if top3_dishes := chat_thread.extracted_answers.get("top3_dishes"):
                 messages = chat_thread.messages.all().order_by("timestamp")
+
+                # There is probably nice and faster way to do this
                 for msg in messages:
-                    for idx, dish in enumerate(top3_dishes):
+                    for dish in top3_dishes:
                         if dish in msg.content:
                             msg.content = msg.content.replace(
                                 dish,
