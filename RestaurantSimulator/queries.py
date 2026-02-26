@@ -39,7 +39,6 @@ def get_diet_distribution() -> dict:
     qs = models.SimulatedChatThread.objects.values(
         diet=Lower("extracted_answers__diet")
     ).annotate(count=Count("id"))
-    print(qs)
     return {
         row["diet"] if row["diet"] is not None else "Unknown": row["count"]
         for row in qs
