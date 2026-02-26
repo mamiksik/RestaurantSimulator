@@ -45,7 +45,7 @@ def index(request):
         'chat_stats': {
             'diet_dist': get_diet_distribution(),
             'dishes_dist': get_all_favorite_foods(),
-            'count': chats_qs.count()
+            'count': models.SimulatedChatThread.objects.all().count()
         },
         'detail_view': details_view,
         'selected_preferences': selected_prefs,
