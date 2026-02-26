@@ -6,7 +6,7 @@ FROM nikolaik/python-nodejs:python3.14-nodejs25-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-#TODO: REMOVE
+# !!! for now this is fine since, we do not use docker for deployment !!!
 ENV DEBUG=True
 
 WORKDIR /home/pn/app
