@@ -1,5 +1,5 @@
 from django.db import connection
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, QuerySet
 from django.db.models.functions import Lower
 
 import RestaurantSimulator.models as models
@@ -45,19 +45,30 @@ def get_diet_distribution() -> dict:
     }
 
 
-def get_all_favorite_foods() -> dict:
+def get_all_favorite_foods(on: QuerySet[models.SimulatedChatThread, models.SimulatedChatThread]) -> dict:
     vendor = connection.vendor
     if vendor != "sqlite":
         raise Exception("Only sqlite database is supported for now")
 
-    sql = """
+    ids = list(on.values_list("id", flat=True))
+    if not ids:
+        return {}
+
+    # IDs come from the database so it's 'safe' to embed them directly.
+    # Use explicit int conversion to avoid any formatting surprises.
+    # In real production app we would definitely use prepared statements,
+    # but now I am getting "not all arguments converted during string formatting"
+    ids_str = ",".join(str(int(i)) for i in ids)
+    sql = f"""
           SELECT lower(trim(json_each.value)) AS food, count(*) AS count
           FROM RestaurantSimulator_simulatedchatthread,
               json_each(RestaurantSimulator_simulatedchatthread.extracted_answers, '$.top3_dishes')
           WHERE RestaurantSimulator_simulatedchatthread.extracted_answers IS NOT NULL
+            AND RestaurantSimulator_simulatedchatthread.id IN ({ids_str})
           GROUP BY food
           ORDER BY count DESC
       """
+
     with connection.cursor() as cursor:
         cursor.execute(sql)
         rows = cursor.fetchall()
